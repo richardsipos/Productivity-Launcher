@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "homepage": "https://richardsipos.github.io/productivity-launcher",
+  "homepage": "https://richardsipos.github.io/Productivity-Launcher",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
