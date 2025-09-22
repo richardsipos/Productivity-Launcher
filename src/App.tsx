@@ -65,7 +65,7 @@ const DEFAULT_TILES: Tile[] = [
     id: "todo",
     title: "Todo HQ",
     subtitle: "Capture & do",
-    url: "https://example.com/todo",
+    url: "https://richardsipos.github.io/Tick-And-Top",
     icon: "CheckSquare",
     color: "from-amber-500 to-orange-500",
     tags: ["tasks"],
