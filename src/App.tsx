@@ -45,9 +45,9 @@ const ICONS = {
 const DEFAULT_TILES: Tile[] = [
   {
     id: "calendar",
-    title: "Team Calendar",
+    title: "Calendar App",
     subtitle: "Plan & collaborate",
-    url: "https://example.com/calendar",
+    url: "https://richardsipos.github.io/Calendar-App/",
     icon: "CalendarClock",
     color: "from-indigo-500 to-blue-500",
     tags: ["work", "planning"],
@@ -69,15 +69,6 @@ const DEFAULT_TILES: Tile[] = [
     icon: "CheckSquare",
     color: "from-amber-500 to-orange-500",
     tags: ["tasks"],
-  },
-  {
-    id: "notes",
-    title: "Notes",
-    subtitle: "Think in text",
-    url: "https://example.com/notes",
-    icon: "NotebookPen",
-    color: "from-fuchsia-500 to-pink-500",
-    tags: ["writing"],
   },
 ];
 
