@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarClock,
@@ -13,7 +14,7 @@ import {
   Trash2,
   Sparkles,
   ExternalLink,
-  HelpCircle,
+  // HelpCircle, // removed
   Paintbrush,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -217,27 +218,44 @@ export default function ProductivityLauncher() {
   const [query, setQuery] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
   const [editing, setEditing] = useState<Tile | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
+
+  // NEW: quotes from public/quotes.json + override
+  const [extraQuotes, setExtraQuotes] = useState<string[]>([]);
+  const [quoteOverride, setQuoteOverride] = useState<string | null>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => applyTheme(theme), [theme]);
+
+  // Keep only "/" to focus search. Removed theme toggle + help shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "/") {
         e.preventDefault();
         searchRef.current?.focus();
-      } else if (e.key.toLowerCase() === "t") {
-        setTheme((prev) =>
-          prev === "light" ? "dark" : prev === "dark" ? "grafit" : prev === "grafit" ? "surprise" : "light"
-        );
-      } else if (e.key === "?") {
-        setHelpOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setTheme]);
+  }, []);
+
+ // Load quotes.json from public (no env, no base)
+  useEffect(() => {
+    fetch('quotes.json', { cache: 'no-store' })
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load quotes.json');
+        return r.json();
+      })
+      .then((arr: unknown) => {
+        if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
+          setExtraQuotes(arr as string[]);
+        } else {
+          setExtraQuotes([]);
+        }
+      })
+      .catch(() => setExtraQuotes([]));
+  }, []);
+
 
   const filtered = useMemo(() => {
     if (!query.trim()) return tiles;
@@ -262,10 +280,13 @@ export default function ProductivityLauncher() {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{
-      background: "var(--bg)",
-      color: "var(--fg)",
-    }}>
+    <div
+      className="min-h-screen"
+      style={{
+        background: "var(--bg)",
+        color: "var(--fg)",
+      }}
+    >
       {/* Container */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -275,12 +296,27 @@ export default function ProductivityLauncher() {
               {greeting()} — {dateStr}
             </h1>
             <p className="text-sm md:text-base mt-1 opacity-80">
-              {quote}
+              {quoteOverride ?? quote}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle theme={theme} setTheme={setTheme} />
+            {/* Inspire me button (random quote from QUOTES + quotes.json) */}
+            <button
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--ring)]/30 px-3 py-2 text-sm hover:bg-[var(--card)]/60"
+              onClick={() => {
+                const all = [...QUOTES, ...extraQuotes];
+                if (all.length) {
+                  const pick = all[Math.floor(Math.random() * all.length)];
+                  setQuoteOverride(pick);
+                }
+              }}
+              aria-label="Inspire me"
+            >
+              <Sparkles className="h-4 w-4" /> Inspire me
+            </button>
+
             <button
               className="inline-flex items-center gap-2 rounded-xl border border-[var(--ring)]/30 px-3 py-2 text-sm hover:bg-[var(--card)]/60"
               onClick={() => setManageOpen(true)}
@@ -288,21 +324,14 @@ export default function ProductivityLauncher() {
             >
               <SettingsIcon className="h-4 w-4" /> Manage Tiles
             </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--ring)]/30 px-3 py-2 text-sm hover:bg-[var(--card)]/60"
-              onClick={() => setHelpOpen(true)}
-              aria-label="Keyboard & help"
-            >
-              <HelpCircle className="h-4 w-4" /> Help
-            </button>
+
+            {/* Help button removed */}
           </div>
         </header>
 
         {/* Search */}
         <div className="mt-6">
-          <div
-            className="flex items-center gap-3 rounded-2xl border border-white/5 bg-[var(--card)]/60 px-4 py-3 shadow-lg ring-1 ring-[var(--ring)]/10 backdrop-blur-md"
-          >
+          <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-[var(--card)]/60 px-4 py-3 shadow-lg ring-1 ring-[var(--ring)]/10 backdrop-blur-md">
             <SearchIcon className="h-5 w-5 opacity-70" />
             <input
               ref={searchRef}
@@ -321,17 +350,13 @@ export default function ProductivityLauncher() {
             <TileCard key={tile.id} tile={tile} />
           ))}
           {filtered.length === 0 && (
-            <p className="opacity-70">No tiles match “{query}”. Try another keyword or add a tile.</p>
+            <p className="opacity-70">
+              No tiles match “{query}”. Try another keyword or add a tile.
+            </p>
           )}
         </main>
 
-        {/* Footer */}
-        <footer className="mt-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm opacity-70">
-          <div>
-            Shortcut keys: <kbd className="kbd">/</kbd> focus search · <kbd className="kbd">T</kbd> toggle theme · <kbd className="kbd">?</kbd> help
-          </div>
-          <div>Launcher v1.0 • Theme: {theme}</div>
-        </footer>
+        {/* Footer removed */}
       </div>
 
       {manageOpen && (
@@ -351,13 +376,15 @@ export default function ProductivityLauncher() {
           tile={editing}
           onCancel={() => setEditing(null)}
           onSave={(updated) => {
-            setTiles((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            setTiles((prev) =>
+              prev.map((t) => (t.id === updated.id ? updated : t))
+            );
             setEditing(null);
           }}
         />
       )}
 
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+      {/* Help modal removed */}
 
       {/* Global styles */}
       <style>{globalStyles}</style>
@@ -369,7 +396,10 @@ export default function ProductivityLauncher() {
 function TileCard({ tile }: { tile: Tile }) {
   const Icon = ICONS[tile.icon] ?? ListTodo;
   const handleClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-    const newTab = ("metaKey" in e && e.metaKey) || ("ctrlKey" in e && e.ctrlKey) || ("button" in e && e.button === 1);
+    const newTab =
+      ("metaKey" in e && e.metaKey) ||
+      ("ctrlKey" in e && e.ctrlKey) ||
+      ("button" in e && e.button === 1);
     openTile(tile.url, newTab);
   };
 
@@ -386,7 +416,9 @@ function TileCard({ tile }: { tile: Tile }) {
       className={`group relative w-full rounded-2xl border border-white/5 bg-[var(--card)]/70 p-5 text-left shadow-lg ring-1 ring-[var(--ring)]/10 backdrop-blur-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]`}
     >
       {/* Accent gradient */}
-      <div className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${tile.color} opacity-0 transition-opacity duration-300 group-hover:opacity-20`} />
+      <div
+        className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${tile.color} opacity-0 transition-opacity duration-300 group-hover:opacity-20`}
+      />
 
       {/* Content */}
       <div className="flex items-start gap-4">
@@ -404,7 +436,10 @@ function TileCard({ tile }: { tile: Tile }) {
           {tile.tags && tile.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {tile.tags.map((tag) => (
-                <span key={tag} className="rounded-full border border-white/10 bg-black/10 px-2 py-0.5 text-xs opacity-80">
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/10 bg-black/10 px-2 py-0.5 text-xs opacity-80"
+                >
                   #{tag}
                 </span>
               ))}
@@ -435,8 +470,12 @@ function ManageTilesModal({
   const [color, setColor] = useState("from-sky-500 to-cyan-500");
   const [tags, setTags] = useState("");
 
+  // KEY FIX: keep local list in sync if tiles prop changes (so edits persist reliably)
+  useEffect(() => setLocal(tiles), [tiles]);
+
   const addTile = () => {
-    const id = slugify(title || "tile-") + "-" + Math.random().toString(36).slice(2, 6);
+    const id =
+      slugify(title || "tile-") + "-" + Math.random().toString(36).slice(2, 6);
     const t: Tile = {
       id,
       title: title || "Untitled",
@@ -456,7 +495,8 @@ function ManageTilesModal({
     setTags("");
   };
 
-  const remove = (id: string) => setLocal((prev) => prev.filter((t) => t.id !== id));
+  const remove = (id: string) =>
+    setLocal((prev) => prev.filter((t) => t.id !== id));
   const move = (i: number, dir: -1 | 1) => {
     setLocal((prev) => {
       const next = [...prev];
@@ -472,9 +512,25 @@ function ManageTilesModal({
       {/* Add form */}
       <div className="rounded-xl border border-white/10 bg-[var(--card)]/50 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <LabeledInput label="Title" value={title} onChange={setTitle} placeholder="e.g., Team Calendar" />
-          <LabeledInput label="Subtitle" value={subtitle} onChange={setSubtitle} placeholder="Short description" />
-          <LabeledInput label="URL" value={url} onChange={setUrl} placeholder="https://your-app.com" type="url" />
+          <LabeledInput
+            label="Title"
+            value={title}
+            onChange={setTitle}
+            placeholder="e.g., Team Calendar"
+          />
+          <LabeledInput
+            label="Subtitle"
+            value={subtitle}
+            onChange={setSubtitle}
+            placeholder="Short description"
+          />
+          <LabeledInput
+            label="URL"
+            value={url}
+            onChange={setUrl}
+            placeholder="https://your-app.com"
+            type="url"
+          />
           <LabeledSelect
             label="Icon"
             value={icon}
@@ -495,10 +551,18 @@ function ManageTilesModal({
               "from-rose-500 to-red-500",
             ].map((c) => ({ value: c, label: c }))}
           />
-          <LabeledInput label="Tags (comma-separated)" value={tags} onChange={setTags} placeholder="work, planning" />
+          <LabeledInput
+            label="Tags (comma-separated)"
+            value={tags}
+            onChange={setTags}
+            placeholder="work, planning"
+          />
         </div>
         <div className="mt-3 flex justify-end">
-          <button onClick={addTile} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-[var(--accent)] text-black font-medium">
+          <button
+            onClick={addTile}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-[var(--accent)] text-black font-medium"
+          >
             <Plus className="h-4 w-4" /> Add tile
           </button>
         </div>
@@ -507,26 +571,57 @@ function ManageTilesModal({
       {/* List */}
       <ul className="mt-5 space-y-3">
         {local.map((t, i) => (
-          <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[var(--card)]/50 p-3">
+          <li
+            key={t.id}
+            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[var(--card)]/50 p-3"
+          >
             <div className="flex items-center gap-3">
-              <span className={`inline-block h-6 w-6 rounded-full bg-gradient-to-br ${t.color}`} />
+              <span
+                className={`inline-block h-6 w-6 rounded-full bg-gradient-to-br ${t.color}`}
+              />
               <div>
                 <div className="font-medium">{t.title}</div>
                 <div className="text-xs opacity-70">{t.url}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="chip" onClick={() => move(i, -1)} aria-label="Move up">↑</button>
-              <button className="chip" onClick={() => move(i, +1)} aria-label="Move down">↓</button>
-              <button className="chip" onClick={() => onEdit(t)} aria-label="Edit"><Pencil className="h-4 w-4" /></button>
-              <button className="chip" onClick={() => remove(t.id)} aria-label="Delete"><Trash2 className="h-4 w-4" /></button>
+              <button
+                className="chip"
+                onClick={() => move(i, -1)}
+                aria-label="Move up"
+              >
+                ↑
+              </button>
+              <button
+                className="chip"
+                onClick={() => move(i, +1)}
+                aria-label="Move down"
+              >
+                ↓
+              </button>
+              <button
+                className="chip"
+                onClick={() => onEdit(t)}
+                aria-label="Edit"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                className="chip"
+                onClick={() => remove(t.id)}
+                aria-label="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           </li>
         ))}
       </ul>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button className="px-4 py-2 rounded-xl border border-white/10" onClick={onClose}>Cancel</button>
+        <button className="px-4 py-2 rounded-xl border border-white/10" onClick={onClose}>
+          Cancel
+        </button>
         <button
           className="px-4 py-2 rounded-xl bg-[var(--accent)] text-black font-medium"
           onClick={() => {
@@ -541,19 +636,41 @@ function ManageTilesModal({
   );
 }
 
-function EditTileModal({ tile, onCancel, onSave }: { tile: Tile; onCancel: () => void; onSave: (t: Tile) => void }) {
+function EditTileModal({
+  tile,
+  onCancel,
+  onSave,
+}: {
+  tile: Tile;
+  onCancel: () => void;
+  onSave: (t: Tile) => void;
+}) {
   const [draft, setDraft] = useState<Tile>({ ...tile });
 
   return (
     <Modal onClose={onCancel} title="Edit Tile">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <LabeledInput label="Title" value={draft.title} onChange={(v) => setDraft({ ...draft, title: v })} />
-        <LabeledInput label="Subtitle" value={draft.subtitle || ""} onChange={(v) => setDraft({ ...draft, subtitle: v })} />
-        <LabeledInput label="URL" value={draft.url} onChange={(v) => setDraft({ ...draft, url: v })} />
+        <LabeledInput
+          label="Title"
+          value={draft.title}
+          onChange={(v) => setDraft({ ...draft, title: v })}
+        />
+        <LabeledInput
+          label="Subtitle"
+          value={draft.subtitle || ""}
+          onChange={(v) => setDraft({ ...draft, subtitle: v })}
+        />
+        <LabeledInput
+          label="URL"
+          value={draft.url}
+          onChange={(v) => setDraft({ ...draft, url: v })}
+        />
         <LabeledSelect
           label="Icon"
           value={draft.icon}
-          onChange={(v) => setDraft({ ...draft, icon: v as keyof typeof ICONS })}
+          onChange={(v) =>
+            setDraft({ ...draft, icon: v as keyof typeof ICONS })
+          }
           options={Object.keys(ICONS).map((k) => ({ value: k, label: k }))}
         />
         <LabeledSelect
@@ -573,12 +690,28 @@ function EditTileModal({ tile, onCancel, onSave }: { tile: Tile; onCancel: () =>
         <LabeledInput
           label="Tags (comma-separated)"
           value={(draft.tags || []).join(", ")}
-          onChange={(v) => setDraft({ ...draft, tags: v.split(",").map((x) => x.trim()).filter(Boolean) })}
+          onChange={(v) =>
+            setDraft({
+              ...draft,
+              tags: v
+                .split(",")
+                .map((x) => x.trim())
+                .filter(Boolean),
+            })
+          }
         />
       </div>
       <div className="mt-6 flex justify-end gap-2">
-        <button className="px-4 py-2 rounded-xl border border-white/10" onClick={onCancel}>Cancel</button>
-        <button className="px-4 py-2 rounded-xl bg-[var(--accent)] text-black font-medium" onClick={() => onSave(draft)}>
+        <button
+          className="px-4 py-2 rounded-xl border border-white/10"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          className="px-4 py-2 rounded-xl bg-[var(--accent)] text-black font-medium"
+          onClick={() => onSave(draft)}
+        >
           Save
         </button>
       </div>
@@ -586,36 +719,68 @@ function EditTileModal({ tile, onCancel, onSave }: { tile: Tile; onCancel: () =>
   );
 }
 
-function ThemeToggle({ theme, setTheme }: { theme: ThemeName; setTheme: (t: ThemeName | ((p: ThemeName) => ThemeName)) => void }) {
-  const next = () => setTheme((prev) => (prev === "light" ? "dark" : prev === "dark" ? "grafit" : prev === "grafit" ? "surprise" : "light"));
-  const label = theme === "light" ? "Light" : theme === "dark" ? "Dark" : theme === "grafit" ? "Grafit" : "Surprise";
-  const icon = theme === "light" ? <Sparkles className="h-4 w-4" /> : theme === "dark" ? <Sparkles className="h-4 w-4" /> : theme === "grafit" ? <Paintbrush className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />;
+function ThemeToggle({
+  theme,
+  setTheme,
+}: {
+  theme: ThemeName;
+  setTheme: (t: ThemeName | ((p: ThemeName) => ThemeName)) => void;
+}) {
+  const next = () =>
+    setTheme((prev) =>
+      prev === "light"
+        ? "dark"
+        : prev === "dark"
+        ? "grafit"
+        : prev === "grafit"
+        ? "surprise"
+        : "light"
+    );
+  const label =
+    theme === "light"
+      ? "Light"
+      : theme === "dark"
+      ? "Dark"
+      : theme === "grafit"
+      ? "Grafit"
+      : "Surprise";
+  const icon =
+    theme === "light" ? (
+      <Sparkles className="h-4 w-4" />
+    ) : theme === "dark" ? (
+      <Sparkles className="h-4 w-4" />
+    ) : theme === "grafit" ? (
+      <Paintbrush className="h-4 w-4" />
+    ) : (
+      <Sparkles className="h-4 w-4" />
+    );
   return (
-    <button onClick={next} className="inline-flex items-center gap-2 rounded-xl border border-[var(--ring)]/30 px-3 py-2 text-sm hover:bg-[var(--card)]/60" aria-label="Toggle theme">
+    <button
+      onClick={next}
+      className="inline-flex items-center gap-2 rounded-xl border border-[var(--ring)]/30 px-3 py-2 text-sm hover:bg-[var(--card)]/60"
+      aria-label="Toggle theme"
+    >
       {icon}
       Theme: {label}
     </button>
   );
 }
 
-function HelpModal({ onClose }: { onClose: () => void }) {
-  return (
-    <Modal onClose={onClose} title="Keyboard & Help">
-      <ul className="space-y-2 text-sm">
-        <li><kbd className="kbd">/</kbd> Focus search</li>
-        <li><kbd className="kbd">T</kbd> Cycle theme (Light → Dark → Grafit → Surprise)</li>
-        <li><kbd className="kbd">Enter</kbd> Open focused tile</li>
-        <li><kbd className="kbd">Ctrl/Cmd + Enter</kbd> Open tile in new tab</li>
-        <li><kbd className="kbd">?</kbd> Open this help</li>
-      </ul>
-      <p className="mt-4 text-sm opacity-80">Pro tip: Use tags in your tile config (e.g., <code>work, planning</code>) to make search instantly filter your tools.</p>
-    </Modal>
-  );
-}
+/* HelpModal removed */
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -626,7 +791,9 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="relative z-10 w-full max-w-3xl rounded-2xl border border-white/10 bg-[var(--card)]/90 p-5 shadow-2xl ring-1 ring-[var(--ring)]/20">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button className="chip" onClick={onClose}>Close</button>
+          <button className="chip" onClick={onClose}>
+            Close
+          </button>
         </div>
         {children}
       </div>
@@ -634,7 +801,19 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function LabeledInput({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+function LabeledInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="opacity-80">{label}</span>
@@ -649,7 +828,17 @@ function LabeledInput({ label, value, onChange, placeholder, type = "text" }: { 
   );
 }
 
-function LabeledSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+function LabeledSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="opacity-80">{label}</span>
@@ -659,7 +848,9 @@ function LabeledSelect({ label, value, onChange, options }: { label: string; val
         className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 outline-none ring-1 ring-transparent focus:ring-[var(--ring)]/60"
       >
         {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
         ))}
       </select>
     </label>
